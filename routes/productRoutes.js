@@ -12,6 +12,12 @@ import {
   uploadProductImage,
 } from "../controllers/productController.js";
 import {
+  createProductMeta,
+  deleteProductMeta,
+  listProductMeta,
+  updateProductMeta,
+} from "../controllers/productMetaController.js";
+import {
   getProductReviews,
   toggleReviewHelpful,
   upsertProductReview,
@@ -29,6 +35,10 @@ router.get("/", publicListCache, getProducts);
 router.get("/recommendations/feed", publicListCache, getRecommendationFeed);
 router.get("/search/trending", publicListCache, getTrendingSearchTerms);
 router.get("/categories/list", publicListCache, getProductCategories);
+router.get("/meta", protect, adminOnly, listProductMeta);
+router.post("/meta", protect, adminOnly, createProductMeta);
+router.put("/meta/:id", protect, adminOnly, updateProductMeta);
+router.delete("/meta/:id", protect, adminOnly, deleteProductMeta);
 router.post("/reviews/upload-image", protect, upload.single("image"), uploadReviewImage);
 router.get("/:id", publicDetailCache, getProductById);
 router.get("/:id/reviews", publicDetailCache, getProductReviews);

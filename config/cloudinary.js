@@ -4,6 +4,8 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { ApiError } from "../middleware/errorMiddleware.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const LOCAL_PUBLIC_ID_PREFIX = "local:uploads/";
@@ -16,12 +18,36 @@ const hasCloudinaryConfig = () =>
       process.env.CLOUDINARY_API_SECRET,
   );
 
+const isProduction = () => process.env.NODE_ENV === "production";
+
+const canUseLocalAssetStorage = () => {
+  const configured = String(process.env.ALLOW_LOCAL_ASSET_STORAGE ?? "").trim().toLowerCase();
+
+  if (configured === "true") {
+    return true;
+  }
+
+  if (configured === "false") {
+    return false;
+  }
+
+  return !isProduction();
+};
+
 if (hasCloudinaryConfig()) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+} else if (canUseLocalAssetStorage()) {
+  console.warn(
+    "Cloudinary is not configured. Falling back to local image storage for this environment.",
+  );
+} else {
+  console.warn(
+    "Cloudinary is not configured. Product and review image uploads are disabled in production to avoid broken local asset URLs.",
+  );
 }
 
 const mimeTypeToExtension = (mimeType = "image/jpeg") => {
@@ -65,7 +91,19 @@ const uploadImageToLocalStorage = async (buffer, mimeType = "image/jpeg") => {
   };
 };
 
+const assertUploadStorageAvailable = () => {
+  if (hasCloudinaryConfig() || canUseLocalAssetStorage()) {
+    return;
+  }
+
+  throw new ApiError(
+    "Image uploads are disabled in production because Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET, then redeploy.",
+    503,
+  );
+};
+
 export const ensureCloudinaryConfigured = () => hasCloudinaryConfig();
+export const allowLocalAssetStorage = () => canUseLocalAssetStorage();
 
 export const uploadImageBuffer = async (
   buffer,
@@ -73,6 +111,7 @@ export const uploadImageBuffer = async (
   mimeType = "image/jpeg",
 ) => {
   if (!hasCloudinaryConfig()) {
+    assertUploadStorageAvailable();
     return uploadImageToLocalStorage(buffer, mimeType);
   }
 

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "audit:product-images": "node scripts/auditProductImages.mjs",
     "seed:catalog": "node scripts/seedCatalog.mjs",
     "seed:demo": "node scripts/pushDemoData.mjs"
   },
