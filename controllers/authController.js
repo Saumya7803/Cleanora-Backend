@@ -92,7 +92,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     throw new ApiError("User not found", 404);
   }
 
-  const { name, phone, avatarUrl } = req.body;
+  const { name, phone, avatarUrl, email } = req.body;
 
   if (typeof name === "string" && name.trim()) {
     user.name = name.trim();
@@ -104,6 +104,25 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   if (typeof avatarUrl === "string") {
     user.avatarUrl = avatarUrl.trim();
+  }
+
+  if (typeof email === "string" && email.trim()) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      throw new ApiError("Please enter a valid email address", 400);
+    }
+
+    if (normalizedEmail !== user.email) {
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: user._id },
+      }).select("_id");
+      if (existingUser) {
+        throw new ApiError("An account already exists for this email", 409);
+      }
+      user.email = normalizedEmail;
+    }
   }
 
   await user.save();
